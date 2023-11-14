@@ -6,6 +6,14 @@ import util
 from engine import trainer
 import os
 import json
+import torch
+import torch.nn as nn
+import openai
+import ast
+
+openai.api_key = "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"
+
+
 
 
 def main(args):
@@ -18,7 +26,6 @@ def main(args):
     dataloader = util.load_dataset(args.data_dir, args.batch_size, args.batch_size, args.batch_size, days=args.days,
                                    sequence=args.seq_length, in_seq=args.in_len)
     scaler = dataloader['scaler']
-
     print(args)
     start_epoch = 1
     engine = trainer(scaler, args.in_dim, args.seq_length, args.num_nodes, args.nhid, args.dropout, args.normalization,
@@ -37,11 +44,52 @@ def main(args):
         train_rmse = []
         tt1 = time.time()
         dataloader['train_loader'].shuffle()
+        gptdata = []
+        data = []
+        i = 0
         for itera, (x, y, ind) in enumerate(dataloader['train_loader'].get_iterator()):
             trainx = torch.Tensor(x).to(device)
             trainx = trainx.transpose(1, 3)
             trainy = torch.Tensor(y).to(device)
             trainy = trainy.transpose(1, 3)
+            print(trainx.shape, trainy.shape)
+            print(str(x),len(str(x)))
+            while i < 10:
+                # Define the system message
+                system_msg = 'You are a helpful assistant who understands traffic and car data predicition .'
+
+                # Define the user message
+                user_msg = ("The indicators describing the traffic dynamics include the average acceleration (AC) of the vehicles (m/s²), the average deceleration (AD) (m/s²), the average emergency deceleration (AED) (m/s²) and the average startup delay (ADL) describing the average time needed for the waiting vehicles to start moving with the unit (s), and the above might vary based on weather or road type. Please assume the above indicators based on the traffic perceptive information below: "
+                            "Please assume the above indicators based on the traffic information below, where each entry in the input array represents average speed and capacity for a given road segment respectively: ") +str(x)[0:6000]
+                user_msg += (" Assuming average californian weather and road conditions Please answer by replacing {value} in the format below: [average acceleration: value], [average deceleration: value], [average emergency deceleration: value], [average startup delay: value]. Always output data values")
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "system", "content": system_msg},
+                              {"role": "user", "content": user_msg}
+                              ])
+
+                out = response.choices[0].message["content"].split(" ")
+                print(out)
+
+                for n in out:
+                    try:
+                        float(n)
+                        data.append(float(n))
+                    except ValueError:
+                        continue
+                print(gptdata)
+                if len(data) == 4:
+                    gptdata.append(data)
+                    data = []
+            i +=1
+            gptdata = torch.randn(10,4)
+            print(gptdata)
+            if i == 10:
+                m = nn.Linear(4,4)
+                out = m(torch.tensor(gptdata))
+                print(out)
+
+
             metrics = engine.train(trainx, trainy[:, 0, :, :], ind)
             train_loss.append(metrics[0])
             train_mape.append(metrics[1])
@@ -166,7 +214,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cuda:0', help='')
+    parser.add_argument('--device', type=str, default='cpu', help='')
     parser.add_argument('--data', type=str, default='PEMSD4', help='data path')
     parser.add_argument('--seq_length', type=int, default=12, help='output length')
     parser.add_argument('--in_len', type=int, default=12, help='input length')
