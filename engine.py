@@ -17,11 +17,13 @@ class trainer():
         self.scaler = scaler
         self.clip = 5
 
-    def train(self, input, real_val, ind):
+    def train(self, input, real_val, ind, extra):
         self.model.train()
         self.optimizer.zero_grad()
         input = nn.functional.pad(input, (1, 0, 0, 0))
         output = self.model(input, ind)
+        if len(extra):
+            output += extra
         output = output.transpose(1, 3)
         real = torch.unsqueeze(real_val, dim=1)
         predict = self.scaler.inverse_transform(output)

@@ -95,7 +95,6 @@ class DMSTGCN(nn.Module):
         self.nodevec_a2p2 = nn.Parameter(torch.randn(num_nodes, dims).to(device), requires_grad=True).to(device)
         self.nodevec_a2p3 = nn.Parameter(torch.randn(num_nodes, dims).to(device), requires_grad=True).to(device)
         self.nodevec_a2pk = nn.Parameter(torch.randn(dims, dims, dims).to(device), requires_grad=True).to(device)
-
         for b in range(blocks):
             additional_scope = kernel_size - 1
             new_dilation = 1

@@ -1,3 +1,5 @@
+import random
+
 import torch
 import numpy as np
 import argparse
@@ -11,7 +13,7 @@ import torch.nn as nn
 import openai
 import ast
 
-openai.api_key = "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"
+openai.api_key = ""
 
 
 
@@ -36,6 +38,8 @@ def main(args):
     val_time = []
     train_time = []
     count = 0
+    gptdata = []
+    concatdata = []
 
     for i in range(start_epoch, args.epochs + 1):
         # train
@@ -44,7 +48,6 @@ def main(args):
         train_rmse = []
         tt1 = time.time()
         dataloader['train_loader'].shuffle()
-        gptdata = []
         data = []
         i = 0
         for itera, (x, y, ind) in enumerate(dataloader['train_loader'].get_iterator()):
@@ -52,9 +55,10 @@ def main(args):
             trainx = trainx.transpose(1, 3)
             trainy = torch.Tensor(y).to(device)
             trainy = trainy.transpose(1, 3)
-            print(trainx.shape, trainy.shape)
-            print(str(x),len(str(x)))
-            while i < 10:
+            #print(trainx.shape, trainy.shape)
+            #print(str(x),len(str(x)))
+            if random.randint(0,10) == 1 and not i:
+                i += 1
                 # Define the system message
                 system_msg = 'You are a helpful assistant who understands traffic and car data predicition .'
 
@@ -81,16 +85,16 @@ def main(args):
                 if len(data) == 4:
                     gptdata.append(data)
                     data = []
-            i +=1
-            gptdata = torch.randn(10,4)
-            print(gptdata)
-            if i == 10:
-                m = nn.Linear(4,4)
-                out = m(torch.tensor(gptdata))
-                print(out)
+                else:
+                    i = 0
 
+            # gptdata = torch.randn(10,4)
+            # print(gptdata)
+            m = nn.Linear(4,4)
+            if(len(gptdata)):
+                concatdata = m(torch.tensor(gptdata))
 
-            metrics = engine.train(trainx, trainy[:, 0, :, :], ind)
+            metrics = engine.train(trainx, trainy[:, 0, :, :], ind, concatdata)
             train_loss.append(metrics[0])
             train_mape.append(metrics[1])
             train_rmse.append(metrics[2])
@@ -214,7 +218,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', type=str, default='cpu', help='')
+    parser.add_argument('--device', type=str, default='cuda:0', help='')
     parser.add_argument('--data', type=str, default='PEMSD4', help='data path')
     parser.add_argument('--seq_length', type=int, default=12, help='output length')
     parser.add_argument('--in_len', type=int, default=12, help='input length')
