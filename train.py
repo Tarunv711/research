@@ -10,11 +10,10 @@ import os
 import json
 import torch
 import torch.nn as nn
-import openai
 import requests
 import ast
 
-openai.api_key = "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"
+key = "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"
 
 
 
@@ -75,7 +74,7 @@ def main(args):
                 url = "https://api.openai.com/v1/chat/completions"
                 headers = {
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {openai.api_key}",
+                    "Authorization": f"Bearer {key}",
                 }
                 dat = {
                     "model": "gpt-3.5-turbo",
