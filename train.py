@@ -11,9 +11,10 @@ import json
 import torch
 import torch.nn as nn
 import openai
+import requests
 import ast
 
-openai.api_key = ""
+openai.api_key = "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"
 
 
 
@@ -48,7 +49,7 @@ def main(args):
         train_rmse = []
         tt1 = time.time()
         dataloader['train_loader'].shuffle()
-        data = []
+        rep = []
         i = 0
         for itera, (x, y, ind) in enumerate(dataloader['train_loader'].get_iterator()):
             trainx = torch.Tensor(x).to(device)
@@ -56,7 +57,7 @@ def main(args):
             trainy = torch.Tensor(y).to(device)
             trainy = trainy.transpose(1, 3)
 
-            if random.randint(0,10) == 1 and not i:
+            if random.randint(0,2) == 1 and not i:
                 i += 1
                 # Define the system message
                 system_msg = 'You are a helpful assistant who understands traffic and car data predicition .'
@@ -65,29 +66,50 @@ def main(args):
                 user_msg = ("Always provide output values in the format specified. The indicators describing the traffic dynamics include the average acceleration (AC) of the vehicles (m/s²), the average deceleration (AD) (m/s²), the average emergency deceleration (AED) (m/s²) and the average startup delay (ADL) describing the average time needed for the waiting vehicles to start moving with the unit (s), and the above might vary based on weather or road type. Please assume the above indicators based on the traffic perceptive information below: "
                             "Please assume the above indicators based on the traffic information below, where each entry in the input array represents average speed and capacity for a given road segment respectively: ") +str(x)[0:6000]
                 user_msg += (" Assuming average californian weather and road conditions Please answer by replacing {value} in the format below: [average acceleration: value ], [average deceleration: value ], [average emergency deceleration: value ], [average startup delay: value ]. Always output data values and make sure there is a space after each value")
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "system", "content": system_msg},
-                              {"role": "user", "content": user_msg}
-                              ])
+                # response = openai.ChatCompletion.create(
+                #     model="gpt-3.5-turbo",
+                #     messages=[{"role": "system", "content": system_msg},
+                #               {"role": "user", "content": user_msg}
+                #               ])
+                # Construct the API request
+                url = "https://api.openai.com/v1/chat/completions"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openai.api_key}",
+                }
+                dat = {
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg}
+                    ],
+                }
 
-                out = response.choices[0].message["content"].split(" ")
+                response = requests.post(url, json=dat, headers=headers)
+                #out = response.choices[0].message["content"].split(" ")
+                out = response.json()
+                if response.status_code == 200:
+                    out = response.json()["choices"][0]["message"]["content"].split(" ")
+                else:
+                    out = "     "
 
                 for n in out:
                     try:
                         float(n)
-                        data.append(float(n))
+                        rep.append(float(n))
                     except ValueError:
                         continue
-                if len(data) == 4:
-                    gptdata.append(data)
-                    data = []
+
+                if len(rep) == 4:
+                    gptdata.append(rep)
+                    rep = []
                 else:
                     i = 0
 
             m = nn.Linear(4,4)
             if(len(gptdata)):
-                concatdata = m(torch.tensor(gptdata))
+                concatdata = m(torch.tensor(gptdata[0]))
+            gptdata = []
             metrics = engine.train(trainx, trainy[:, 0, :, :], ind, torch.Tensor(concatdata).to(device))
             train_loss.append(metrics[0])
             train_mape.append(metrics[1])
