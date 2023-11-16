@@ -104,15 +104,15 @@ class DMSTGCN(nn.Module):
                                                    out_channels=dilation_channels,
                                                    kernel_size=(1, kernel_size), dilation=new_dilation))
 
-                self.gate_convs.append(nn.Conv1d(in_channels=residual_channels,
+                self.gate_convs.append(nn.Conv2d(in_channels=residual_channels,
                                                  out_channels=dilation_channels,
                                                  kernel_size=(1, kernel_size), dilation=new_dilation))
 
-                self.residual_convs.append(nn.Conv1d(in_channels=dilation_channels,
+                self.residual_convs.append(nn.Conv2d(in_channels=dilation_channels,
                                                      out_channels=residual_channels,
                                                      kernel_size=(1, 1)))
 
-                self.skip_convs.append(nn.Conv1d(in_channels=dilation_channels,
+                self.skip_convs.append(nn.Conv2d(in_channels=dilation_channels,
                                                  out_channels=skip_channels,
                                                  kernel_size=(1, 1)))
 
@@ -120,12 +120,12 @@ class DMSTGCN(nn.Module):
                                                      out_channels=dilation_channels,
                                                      kernel_size=(1, kernel_size), dilation=new_dilation))
 
-                self.gate_convs_a.append(nn.Conv1d(in_channels=residual_channels,
+                self.gate_convs_a.append(nn.Conv2d(in_channels=residual_channels,
                                                    out_channels=dilation_channels,
                                                    kernel_size=(1, kernel_size), dilation=new_dilation))
 
                 # 1x1 convolution for residual connection
-                self.residual_convs_a.append(nn.Conv1d(in_channels=dilation_channels,
+                self.residual_convs_a.append(nn.Conv2d(in_channels=dilation_channels,
                                                        out_channels=residual_channels,
                                                        kernel_size=(1, 1)))
                 if normalization == "batch":
@@ -192,6 +192,7 @@ class DMSTGCN(nn.Module):
             residual = x
             filter = self.filter_convs[i](residual)
             filter = torch.tanh(filter)
+
             gate = self.gate_convs[i](residual)
             gate = torch.sigmoid(gate)
             x = filter * gate

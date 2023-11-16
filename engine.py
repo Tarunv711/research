@@ -1,3 +1,4 @@
+import torch
 import torch.optim as optim
 from model import *
 import util
@@ -23,8 +24,18 @@ class trainer():
         input = nn.functional.pad(input, (1, 0, 0, 0))
         output = self.model(input, ind)
         if len(extra):
-            output += extra
+            tensor=extra
+            flat_tensor = torch.reshape(tensor, [-1])
+
+            # Tile the tensor to match the total number of elements in the target shape
+            tiled_tensor = torch.tile(flat_tensor, [64*12*307*1 // 4,1])
+
+            output_tensor = torch.reshape(tiled_tensor, [64,12,307,1])
+
+            output += output_tensor
+
         output = output.transpose(1, 3)
+
         real = torch.unsqueeze(real_val, dim=1)
         predict = self.scaler.inverse_transform(output)
         loss = self.loss(predict, real, 0.0)
